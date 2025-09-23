@@ -46,10 +46,7 @@ async function analyte() {
         const { fens } = data;
 
         let recommendedWorkers = getRecommendedWorkersNb();
-        if (fens.length > 100) {
-            recommendedWorkers = Math.max(1, recommendedWorkers - 2); 
-            console.log(`⚡ Reduced workers to ${recommendedWorkers} due to long game (${fens.length} moves)`);
-        }
+
 
         const results = await runInBatches(fens, recommendedWorkers, async (fen) => {
             if (!fen) return { fen: null, analysis: null };
