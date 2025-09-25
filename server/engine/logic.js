@@ -308,17 +308,10 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
     if (isSacrifice && winDropOk && !skipbrilliant) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
-      actualgrading[i -1] = "Brilliant";
+      actualgrading[i] = "Brilliant";
       continue;
     }
 
-      if (
-        getIsPieceSacrifice(fenBefore, playedMove, bestLine) &&
-        ((currentWin - lastWin) * (isWhiteMove ? 1 : -1)) >= -2
-      ) {
-        actualgrading[i] = "Brilliant";
-        continue;
-      }
 
       if (typeof bestevalcp[i] === "string" && bestevalcp[i].startsWith("mate in")) {
         if (!mateThreatActive && i - 1 >= 0) {
