@@ -140,6 +140,71 @@ function trimFen(fen) {
   return fen.split(' ')[0];
 }
 
+
+
+function isDefensiveMove(fen, playedMove) {
+  const game = new Chess(fen);
+  const ourColor = game.turn();
+  
+  try {
+    const opponentMovesBefore = game.moves({ verbose: true });
+    const threatenedSquaresBefore = new Set();
+    
+    for (const move of opponentMovesBefore) {
+      if (move.captured) {
+        threatenedSquaresBefore.add(move.to);
+      }
+    }
+    
+    const ourMove = game.move({ 
+      from: playedMove.slice(0, 2), 
+      to: playedMove.slice(2, 4), 
+      promotion: playedMove[4] 
+    });
+    
+    if (!ourMove) return { isDefensive: false, reason: "Invalid move" };
+    
+    const inCheck = game.inCheck();
+    const ourMovesAfter = game.moves({ verbose: true });
+    
+    let createdMajorThreat = inCheck;
+    
+    if (!createdMajorThreat) {
+      for (const move of ourMovesAfter) {
+        if (move.captured) {
+          const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+          const capturedValue = pieceValues[move.captured] || 0;
+          if (capturedValue >= 5) {
+            createdMajorThreat = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    const wasUnderAttack = threatenedSquaresBefore.has(ourMove.from);
+    
+    if (wasUnderAttack && createdMajorThreat) {
+      return { 
+        isDefensive: false, 
+        reason: `Counter-attack: ${ourMove.piece} was threatened but created bigger threat`
+      };
+    }
+    
+    if (wasUnderAttack && !createdMajorThreat && !ourMove.captured) {
+      return { 
+        isDefensive: true, 
+        reason: `Defensive move: ${ourMove.piece} moved to safety without counter-threat`
+      };
+    }
+    
+    return { isDefensive: false, reason: "Not a defensive move" };
+    
+  } catch (e) {
+    return { isDefensive: false, reason: `Error: ${e.message}` };
+  }
+}
+
 export async function handlemovelist(mdata, username, sessionUser ,options = { userPGN: false },isWhite) {
   const chess = new Chess();
   const fens = [];
@@ -300,7 +365,8 @@ const lastWin = isWhiteMove ? userwinpercents[i-1] : 100 - userwinpercents[i-1];
 const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
 
           const sacrificeResult = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
-          const isSacrifice = sacrificeResult.isSacrifice;
+      const defensiveResult = isDefensiveMove(fenBefore, playedMove);
+          const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
       playedMove,
