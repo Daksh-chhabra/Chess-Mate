@@ -64,61 +64,69 @@ function isUciMove(move) {
 }
 
 function getIsPieceSacrifice(fen, playedMove, bestLinePvToPlay) {
-  if (!bestLinePvToPlay || !bestLinePvToPlay.length) return false;
+  if (!bestLinePvToPlay || !bestLinePvToPlay.length) {
+    return { isSacrifice: false, reason: "No best line was provided to analyze." };
+  }
 
   const game = new Chess(fen);
   const whiteToPlay = game.turn() === "w";
-  const startingMaterialDifference = getMaterialDifference(fen);
+  const startingMaterial = getMaterialDifference(fen);
 
-  let moves = [playedMove, ...bestLinePvToPlay];
-  if (moves.length % 2 === 1) {
-    moves = moves.slice(0, -1);
+  let analyzedSequence = [playedMove, ...bestLinePvToPlay];
+  if (analyzedSequence.length % 2 === 1) {
+    analyzedSequence = analyzedSequence.slice(0, -1);
   }
 
   const capturedPieces = { w: [], b: [] };
-  let nonCapturingMovesTemp = 0;
+  let nonCapturingMovesTemp = 1;
 
-  for (const move of moves) {
+  for (const move of analyzedSequence) {
     try {
-      const fullMove = game.move({
-        from: move.slice(0, 2),
-        to: move.slice(2, 4),
-        promotion: move[4],
-      });
-
-      if (!fullMove) return false;
-
+      const fullMove = game.move({ from: move.slice(0, 2), to: move.slice(2, 4), promotion: move[4] });
+      if (!fullMove) {
+        console.warn(`[SacrificeCheck] Engine proposed an illegal move in sequence: '${move}'`);
+        break;
+      }
       if (fullMove.captured) {
         capturedPieces[fullMove.color].push(fullMove.captured);
-        nonCapturingMovesTemp = 0;
+        nonCapturingMovesTemp = 1;
       } else {
         nonCapturingMovesTemp--;
         if (nonCapturingMovesTemp < 0) break;
       }
-    } catch {
-      return false;
+    } catch (e) {
+      console.warn(`[SacrificeCheck] Could not process move '${move}' in sequence. Error: ${e.message}`);
+      break;
     }
   }
 
-  for (const p of capturedPieces.w.slice(0)) {
-    if (capturedPieces.b.includes(p)) {
-      capturedPieces.b.splice(capturedPieces.b.indexOf(p), 1);
-      capturedPieces.w.splice(capturedPieces.w.indexOf(p), 1);
+  const wCaps = [...capturedPieces.w];
+  const bCaps = [...capturedPieces.b];
+  for (const p of capturedPieces.w) {
+    if (bCaps.includes(p)) {
+      bCaps.splice(bCaps.indexOf(p), 1);
+      wCaps.splice(wCaps.indexOf(p), 1);
     }
   }
 
-  if (
-    Math.abs(capturedPieces.w.length - capturedPieces.b.length) <= 1 &&
-    capturedPieces.w.concat(capturedPieces.b).every(p => p === "p")
-  ) {
-    return false;
+  // --- FIX: Calculate endingMaterial before every return path ---
+  const endingMaterial = getMaterialDifference(game.fen());
+
+  if (Math.abs(wCaps.length - bCaps.length) <= 1 && wCaps.concat(bCaps).every(p => p === "p")) {
+    return { isSacrifice: false, reason: "Filtered out as a simple pawn exchange.", startingMaterial, endingMaterial, analyzedSequence };
   }
 
-  const endingMaterialDifference = getMaterialDifference(game.fen());
-  const materialDiff = endingMaterialDifference - startingMaterialDifference;
+  const materialDiff = endingMaterial - startingMaterial;
   const materialDiffPlayerRelative = whiteToPlay ? materialDiff : -materialDiff;
+  const isSacrifice = materialDiffPlayerRelative < -1.5;
 
-  return materialDiffPlayerRelative < 0;
+  return {
+    isSacrifice: isSacrifice,
+    reason: isSacrifice ? "Player is down material after sequence." : "Player is not down material after sequence.",
+    startingMaterial: startingMaterial,
+    endingMaterial: endingMaterial,
+    analyzedSequence: analyzedSequence
+  };
 }
 
 function isLosingOrAlternateCompletelyWinning(posWin, altWin, isWhiteMove) {
@@ -132,7 +140,7 @@ function trimFen(fen) {
   return fen.split(' ')[0];
 }
 
-export async function handlemovelist(mdata, username, sessionUser ,options = { userPGN: false }) {
+export async function handlemovelist(mdata, username, sessionUser ,options = { userPGN: false },isWhite) {
   const chess = new Chess();
   const fens = [];
   let lastMove = Promise.resolve();
@@ -280,18 +288,20 @@ export async function handlemovelist(mdata, username, sessionUser ,options = { u
 
   const actualgrading = [];
   let mateThreatActive = false;
-
-for (let i = 1; i < userevals.length - 1; i++) {
+console.log("userwinpercents",userwinpercents);
+for (let i = 1; i < userevals.length ; i++) {
     try {
       const fenBefore = fens[i -1];
       const playedMove = mdata[i];
       const bestLine = pvUciHistory[i] || [];
-const lastWin = toWhiteWinPercent(bestevalcp[i - 1], (i - 1) % 2 === 0);
-const currentWin = toWhiteWinPercent(bestevalcp[i], i % 2 === 0);
-const isWhiteMove = i % 2 === 0;
 
-          const isSacrifice = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
-    const winDropOk = isWhiteMove ? currentWin - lastWin >= -0.2 : lastWin - currentWin >=0.2;
+const isWhiteMove = (i-1) % 2 === 0;
+const lastWin = isWhiteMove ? userwinpercents[i-1] : 100 - userwinpercents[i-1];
+const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
+
+          const sacrificeResult = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
+          const isSacrifice = sacrificeResult.isSacrifice;
+    const winDropOk = isWhiteMove ? lastWin - currentWin >= -0.2 : lastWin - currentWin>=-0.2;
     /*console.log(`Move ${i}:`, {
       playedMove,
       isSacrifice,
@@ -308,9 +318,17 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
     if (isSacrifice && winDropOk && !skipbrilliant) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
-      actualgrading[i] = "Brilliant";
+      actualgrading[i-1] = "Brilliant";
       continue;
     }
+    const isBrilliant = actualgrading[i] === " Brilliant";
+        console.log(`--- Move ${i} (${playedMove}) ---`);
+        console.log({
+            winConditions: { lastWin: lastWin?.toFixed(1), currentWin: currentWin?.toFixed(1), winDropOk },
+            brilliantConditions: { isSacrifice, winDropOk },
+            isBrilliantCandidate: isBrilliant,
+            sacrificeAnalysis: sacrificeResult // Log the full detailed object
+        });
 
 
       if (typeof bestevalcp[i] === "string" && bestevalcp[i].startsWith("mate in")) {
