@@ -301,7 +301,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
 
           const sacrificeResult = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
           const isSacrifice = sacrificeResult.isSacrifice;
-    const winDropOk = isWhiteMove ? lastWin - currentWin >= -0.2 : lastWin - currentWin>=-0.2;
+    const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
       playedMove,
       isSacrifice,
