@@ -205,6 +205,39 @@ function isDefensiveMove(fen, playedMove) {
   }
 }
 
+
+
+
+function canBeBrilliantAfterMistake(actualgrading, currentIndex) {
+  if (currentIndex < 2) return { canBeBrilliant: true, reason: "Not enough moves to check" };
+  
+  const myPreviousMove = actualgrading[currentIndex - 2];
+  const opponentLastMove = actualgrading[currentIndex - 1]; 
+  
+  const badMoves = ["Blunder", "Mistake", "Inaccuracy"];
+  const myPrevWasBad = badMoves.includes(myPreviousMove);
+  const oppLastWasBad = badMoves.includes(opponentLastMove);
+  
+  if (myPrevWasBad && !oppLastWasBad) {
+    return { 
+      canBeBrilliant: false, 
+      reason: `Previous move was ${myPreviousMove} and opponent didn't blunder (${opponentLastMove})` 
+    };
+  }
+  
+  return { 
+    canBeBrilliant: true, 
+    reason: myPrevWasBad ? `Previous move was ${myPreviousMove} but opponent also made ${opponentLastMove}` : "Previous move was good" 
+  };
+}
+
+
+
+
+
+
+
+
 export async function handlemovelist(mdata, username, sessionUser ,options = { userPGN: false },isWhite) {
   const chess = new Chess();
   const fens = [];
@@ -366,6 +399,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
 
           const sacrificeResult = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
       const defensiveResult = isDefensiveMove(fenBefore, playedMove);
+      const previousMoveCheck = canBeBrilliantAfterMistake(actualgrading, i-1);
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
@@ -382,10 +416,9 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
-    if (isSacrifice && winDropOk && !skipbrilliant) {
+    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
       actualgrading[i-1] = "Brilliant";
-      continue;
     }
     const isBrilliant = actualgrading[i] === " Brilliant";
         console.log(`--- Move ${i} (${playedMove}) ---`);
@@ -407,7 +440,6 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
       if (typeof userevals[i + 1] === "string" && userevals[i + 1].startsWith("mate in")) {
         const mateValue = parseInt(userevals[i + 1].split(" ")[2], 10);
         actualgrading[i] = mateValue > 0 ? "Mate" : "Lost Mate";
-        continue;
       }
 
       if (mateThreatActive && Math.abs(userevals[i + 1]) < 50) {
