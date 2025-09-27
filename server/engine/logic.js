@@ -18,6 +18,19 @@ function addDefaultPromotion(move, chess) {
   return move;
 }
 
+function isOnlyLegalMove(fen) {
+  try {
+    const game = new Chess(fen);
+    const legalMoves = game.moves();
+    return { 
+      isOnlyMove: legalMoves.length === 1, 
+      moveCount: legalMoves.length 
+    };
+  } catch (e) {
+    return { isOnlyMove: false, moveCount: 0 };
+  }
+}
+
 
 
 
@@ -72,7 +85,7 @@ function getIsPieceSacrifice(fen, playedMove, bestLinePvToPlay) {
   const whiteToPlay = game.turn() === "w";
   const startingMaterial = getMaterialDifference(fen);
 
-  let analyzedSequence = [playedMove, ...bestLinePvToPlay];
+  let analyzedSequence = [playedMove, ...bestLinePvToPlay.slice(0, 7)];
   if (analyzedSequence.length % 2 === 1) {
     analyzedSequence = analyzedSequence.slice(0, -1);
   }
@@ -430,6 +443,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       const defensiveResult = isDefensiveMove(fenBefore, playedMove);
       const previousMoveCheck = canBeBrilliantAfterMistake(actualgrading, i-1);
       const forcedKingMove = isForcedKingMove(fenBefore, playedMove);
+      const onlyMove = isOnlyLegalMove(fenBefore);
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
@@ -446,7 +460,7 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
-    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove) {
+    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove && !onlyMove.isOnlyMove) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
       actualgrading[i-1] = "Brilliant";
     }
