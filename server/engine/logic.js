@@ -109,7 +109,6 @@ function getIsPieceSacrifice(fen, playedMove, bestLinePvToPlay) {
     }
   }
 
-  // --- FIX: Calculate endingMaterial before every return path ---
   const endingMaterial = getMaterialDifference(game.fen());
 
   if (Math.abs(wCaps.length - bCaps.length) <= 1 && wCaps.concat(bCaps).every(p => p === "p")) {
@@ -229,6 +228,36 @@ function canBeBrilliantAfterMistake(actualgrading, currentIndex) {
     canBeBrilliant: true, 
     reason: myPrevWasBad ? `Previous move was ${myPreviousMove} but opponent also made ${opponentLastMove}` : "Previous move was good" 
   };
+}
+
+
+
+
+
+function isForcedKingMove(fen, playedMove) {
+  try {
+    const game = new Chess(fen);
+    
+    const inCheck = game.inCheck();
+    if (!inCheck) {
+      return { isForcedKingMove: false, reason: "Position not in check" };
+    }
+    
+    const fromSquare = playedMove.slice(0, 2);
+    const piece = game.get(fromSquare);
+    
+    if (!piece || piece.type !== 'k') {
+      return { isForcedKingMove: false, reason: "Move is not a king move" };
+    }
+    
+    return { 
+      isForcedKingMove: true, 
+      reason: "King move while in check - likely forced" 
+    };
+    
+  } catch (e) {
+    return { isForcedKingMove: false, reason: `Error: ${e.message}` };
+  }
 }
 
 
@@ -400,6 +429,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
           const sacrificeResult = getIsPieceSacrifice(fenBefore, playedMove, bestLine);
       const defensiveResult = isDefensiveMove(fenBefore, playedMove);
       const previousMoveCheck = canBeBrilliantAfterMistake(actualgrading, i-1);
+      const forcedKingMove = isForcedKingMove(fenBefore, playedMove);
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
@@ -416,7 +446,7 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
-    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant) {
+    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
       actualgrading[i-1] = "Brilliant";
     }
