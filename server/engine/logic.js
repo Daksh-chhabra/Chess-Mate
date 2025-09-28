@@ -31,11 +31,10 @@ function isOnlyLegalMove(fen) {
   }
 }
 
-function meetsMinimumWinPercent(winPercentAfter, isWhiteMove) {
-  const actualWinAfter = isWhiteMove ? winPercentAfter : 100 - winPercentAfter;
+function meetsMinimumWinPercent(winPercentAfter) {
   return {
-    meetsMinimum: actualWinAfter >= 25,
-    actualWinPercent: actualWinAfter
+    meetsMinimum: winPercentAfter >= 25,
+    actualWinPercent: winPercentAfter
   };
 }
 
