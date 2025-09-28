@@ -1635,7 +1635,7 @@ const calculatePhaseAggregatedStats = (moves, grades, cploss, evals, isWhite,use
                 }
             });
             
-            return Math.min(100, Math.round((techniqueScore / maxScore) * 100));
+            return Math.round((techniqueScore / maxScore) * 1000) / 100;
         })() : 0;
 
 
@@ -1808,7 +1808,7 @@ const pushUserPhaseStats = async (username, phaseStats, gameInfo) => {
     }
 };
 
-const phaseStats = calculatePhaseAggregatedStats(moves, grades, cploss, isWhite,evals,userwinpercents);
+const phaseStats = calculatePhaseAggregatedStats(moves, grades, cploss, evals, isWhite, userwinpercents);
 const phaseResult = await pushUserPhaseStats(username, phaseStats, gameInfo)
 if (phaseResult.success) {
     console.log(`Phase stats updated for ${username}`)
