@@ -450,7 +450,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       const previousMoveCheck = canBeBrilliantAfterMistake(actualgrading, i-1);
       const forcedKingMove = isForcedKingMove(fenBefore, playedMove);
       const onlyMove = isOnlyLegalMove(fenBefore);
-      const winPercentCheck = meetsMinimumWinPercent(currentWin, isWhiteMove);
+      const winPercentCheck = meetsMinimumWinPercent(currentWin);
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
