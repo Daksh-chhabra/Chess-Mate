@@ -462,8 +462,8 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       isWhiteMove
     }); */
 function skipBrilliant(winPercentBefore, winPercentAfter) {
-  if (winPercentBefore <= 5 || winPercentBefore >= 95) return true;
-  if (winPercentAfter <= 5 || winPercentAfter >= 95) return true;
+  if (winPercentBefore <= 15 || winPercentBefore >= 85) return true;
+  if (winPercentAfter <= 15 || winPercentAfter >= 85) return true;
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
