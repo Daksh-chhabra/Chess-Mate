@@ -31,6 +31,13 @@ function isOnlyLegalMove(fen) {
   }
 }
 
+function meetsMinimumWinPercent(winPercentAfter, isWhiteMove) {
+  const actualWinAfter = isWhiteMove ? winPercentAfter : 100 - winPercentAfter;
+  return {
+    meetsMinimum: actualWinAfter >= 25,
+    actualWinPercent: actualWinAfter
+  };
+}
 
 
 
@@ -444,6 +451,7 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       const previousMoveCheck = canBeBrilliantAfterMistake(actualgrading, i-1);
       const forcedKingMove = isForcedKingMove(fenBefore, playedMove);
       const onlyMove = isOnlyLegalMove(fenBefore);
+      const winPercentCheck = meetsMinimumWinPercent(currentWin, isWhiteMove);
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
@@ -460,7 +468,7 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
-    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove && !onlyMove.isOnlyMove) {
+    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove && !onlyMove.isOnlyMove && winPercentCheck.meetsMinimum) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
       actualgrading[i-1] = "Brilliant";
     }
