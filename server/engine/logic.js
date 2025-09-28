@@ -39,6 +39,105 @@ function meetsMinimumWinPercent(winPercentAfter) {
 }
 
 
+function isDirectForkResponse(fenBefore, playedMove) {
+  try {
+    const game = new Chess(fenBefore);
+    const playedFrom = playedMove.slice(0, 2);
+    const ourColor = game.turn();
+    const opponentColor = ourColor === 'w' ? 'b' : 'w';
+    
+    const movedPiece = game.get(playedFrom);
+    if (!movedPiece || !['q', 'r'].includes(movedPiece.type)) {
+      return { isDirectForkResponse: false, reason: "Didn't move a valuable piece" };
+    }
+    
+    const attackers = game.attackers(opponentColor, playedFrom);
+    if (attackers.length === 0) {
+      return { isDirectForkResponse: false, reason: "Moved piece wasn't under attack" };
+    }
+    
+    let otherThreatenedPieces = 0;
+    const board = game.board().flat();
+    
+    for (const attackerSquare of attackers) {
+      const tempGame = new Chess(fenBefore);
+      const attackerMoves = tempGame.moves({ square: attackerSquare, verbose: true });
+      
+      for (const move of attackerMoves) {
+        if (move.captured && ['q', 'r'].includes(move.captured) && move.to !== playedFrom) {
+          otherThreatenedPieces++;
+        }
+      }
+    }
+    
+    if (otherThreatenedPieces >= 1) {
+      return {
+        isDirectForkResponse: true,
+        reason: `Moved ${movedPiece.type} that was forked with ${otherThreatenedPieces} other pieces`
+      };
+    }
+    
+    return { isDirectForkResponse: false, reason: "Not a direct fork response" };
+    
+  } catch (e) {
+    return { isDirectForkResponse: false, reason: `Error: ${e.message}` };
+  }
+}
+
+function isCreativeSacrificeFromFork(fenBefore, playedMove) {
+  try {
+    const game = new Chess(fenBefore);
+    const playedFrom = playedMove.slice(0, 2);
+    const playedTo = playedMove.slice(2, 4);
+    const ourColor = game.turn();
+    const opponentColor = ourColor === 'w' ? 'b' : 'w';
+    
+    const movedPiece = game.get(playedFrom);
+    if (!movedPiece || !['q', 'r'].includes(movedPiece.type)) {
+      return { isCreative: false, reason: "Not moving valuable piece" };
+    }
+    
+    const wasUnderAttack = game.attackers(opponentColor, playedFrom).length > 0;
+    if (!wasUnderAttack) {
+      return { isCreative: false, reason: "Piece wasn't under attack" };
+    }
+    
+    const move = game.move({ from: playedFrom, to: playedTo, promotion: playedMove[4] });
+    if (!move) return { isCreative: false, reason: "Invalid move" };
+    
+    const isCheck = game.inCheck();
+    const isCapture = move.captured !== undefined;
+    
+    const ourMoves = game.moves({ verbose: true });
+    let hasImmediateThreat = isCheck;
+    
+    for (const nextMove of ourMoves) {
+      if (nextMove.captured && ['q', 'r', 'n', 'b'].includes(nextMove.captured)) {
+        hasImmediateThreat = true;
+        break;
+      }
+    }
+    
+    game.undo();
+    
+    if (hasImmediateThreat || isCapture) {
+      return {
+        isCreative: true,
+        reason: `Sacrificed forked ${movedPiece.type} but created ${isCheck ? 'check' : isCapture ? 'capture' : 'threat'}`
+      };
+    }
+    
+    return {
+      isCreative: false,
+      reason: `Moved forked ${movedPiece.type} without creating threats - just running`
+    };
+    
+  } catch (e) {
+    return { isCreative: false, reason: `Error: ${e.message}` };
+  }
+}
+
+
 
 
 function getWinPercentageFromCp(cp) {
@@ -451,6 +550,9 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       const forcedKingMove = isForcedKingMove(fenBefore, playedMove);
       const onlyMove = isOnlyLegalMove(fenBefore);
       const winPercentCheck = meetsMinimumWinPercent(currentWin);
+      const directForkResponse = isDirectForkResponse(fenBefore, playedMove);
+const creativeSacFromFork = isCreativeSacrificeFromFork(fenBefore, playedMove);
+const blockForFork = directForkResponse.isDirectForkResponse && !creativeSacFromFork.isCreative;
           const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
     const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
@@ -467,7 +569,7 @@ function skipBrilliant(winPercentBefore, winPercentAfter) {
   return false;
 }
     const skipbrilliant =skipBrilliant(lastWin ,currentWin);
-    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove && !onlyMove.isOnlyMove && winPercentCheck.meetsMinimum) {
+    if (isSacrifice && winDropOk && !skipbrilliant && previousMoveCheck.canBeBrilliant && !forcedKingMove.isForcedKingMove && !onlyMove.isOnlyMove && winPercentCheck.meetsMinimum && !blockForFork) {
       //console.log(`✅ Brilliant triggered at move ${i}`);
       actualgrading[i-1] = "Brilliant";
     }
