@@ -57,7 +57,7 @@ const getGamePhaseBoundaries = (moves) => {
     moves.forEach((move, idx) => {
         if (move.includes("x")) xCount++;
         
-        if ((idx >= 15 || xCount >= 6) && boundaries.openingEnd === -1) {
+        if ((idx > 18 || xCount >= 6) && boundaries.openingEnd === -1) {
             boundaries.openingEnd = idx;
         }
 
@@ -148,8 +148,8 @@ const extractAdvancedMetrics = (moves, grades, cploss, captures, isWhite, captur
                 capture: captures[idx] || 'no capture'
             };
 
-            if (xCount <= 6) phases.opening.push(moveData);
-            else if (xCount <= 12) phases.middlegame.push(moveData);
+            if (xCount <= 6 || idx <=18) phases.opening.push(moveData);
+            else if (xCount <= 16 || idx <= 59) phases.middlegame.push(moveData);
             else phases.endgame.push(moveData);
         });
 
@@ -1107,10 +1107,10 @@ function getWinPercentageFromCp(cp) {
                 xCount++;
             }
 
-            if (xCount <= 6 && idx <= 18) {
+            if (xCount <= 6 || idx <= 18) {
                 opening.push(move);
                 openinggrades.push(grades[idx]);
-            } else if (xCount <= 12) {
+            } else if (xCount <= 16 || idx <=59) {
                 middlegame.push(move);
                 middlegamegrades.push(grades[idx]);
             } else {
