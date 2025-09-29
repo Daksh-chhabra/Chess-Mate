@@ -1518,7 +1518,7 @@ const calculatePhaseAggregatedStats = (moves, grades, cploss, evals, isWhite,use
         phaseMoves.forEach(moveData => {
             totalCpLoss += Math.abs(moveData.cpLoss || 0);
             
-            const gradeValues = { 'Brilliant': 100, 'Great': 95, 'Best': 90, 'Good': 80, 'Book': 75, 'Okay': 65, 'Inaccuracy': 40, 'Mistake': 20, 'Blunder': 10 };
+            const gradeValues = { 'Brilliant': 100, 'Great': 100, 'Best': 100, 'Good': 80, 'Book': 100, 'Okay': 65, 'Inaccuracy': 40, 'Mistake': 20, 'Blunder': 10 };
             totalGradeValue += gradeValues[moveData.grade] || 70;
 
             if (moveData.grade === 'Blunder') blunders++;
