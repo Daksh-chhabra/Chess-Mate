@@ -57,7 +57,7 @@ export const getUserOpeningStats = async (username) => {
             const avgACPL = stat.avg_opening_acpl || 0;
             
             function acplToAccuracy(acpl) {
-                const k = 0.004;
+                const k = 0.005;
                 let acc = 100 * Math.exp(-k * acpl);
                 return parseFloat(acc.toFixed(2));
             }
