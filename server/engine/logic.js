@@ -84,60 +84,6 @@ function isDirectForkResponse(fenBefore, playedMove) {
   }
 }
 
-function isCreativeSacrificeFromFork(fenBefore, playedMove) {
-  try {
-    const game = new Chess(fenBefore);
-    const playedFrom = playedMove.slice(0, 2);
-    const playedTo = playedMove.slice(2, 4);
-    const ourColor = game.turn();
-    const opponentColor = ourColor === 'w' ? 'b' : 'w';
-    
-    const movedPiece = game.get(playedFrom);
-    if (!movedPiece || !['q', 'r'].includes(movedPiece.type)) {
-      return { isCreative: false, reason: "Not moving valuable piece" };
-    }
-    
-    const wasUnderAttack = game.attackers(opponentColor, playedFrom).length > 0;
-    if (!wasUnderAttack) {
-      return { isCreative: false, reason: "Piece wasn't under attack" };
-    }
-    
-    const move = game.move({ from: playedFrom, to: playedTo, promotion: playedMove[4] });
-    if (!move) return { isCreative: false, reason: "Invalid move" };
-    
-    const isCheck = game.inCheck();
-    const isCapture = move.captured !== undefined;
-    
-    const ourMoves = game.moves({ verbose: true });
-    let hasImmediateThreat = isCheck;
-    
-    for (const nextMove of ourMoves) {
-      if (nextMove.captured && ['q', 'r', 'n', 'b'].includes(nextMove.captured)) {
-        hasImmediateThreat = true;
-        break;
-      }
-    }
-    
-    game.undo();
-    
-    if (hasImmediateThreat || isCapture) {
-      return {
-        isCreative: true,
-        reason: `Sacrificed forked ${movedPiece.type} but created ${isCheck ? 'check' : isCapture ? 'capture' : 'threat'}`
-      };
-    }
-    
-    return {
-      isCreative: false,
-      reason: `Moved forked ${movedPiece.type} without creating threats - just running`
-    };
-    
-  } catch (e) {
-    return { isCreative: false, reason: `Error: ${e.message}` };
-  }
-}
-
-
 
 
 function getWinPercentageFromCp(cp) {
@@ -262,19 +208,14 @@ function trimFen(fen) {
 function isDefensiveMove(fen, playedMove) {
   const game = new Chess(fen);
   const ourColor = game.turn();
-  
+  const opponentColor = ourColor === 'w' ? 'b' : 'w';
+
   try {
-    const opponentMovesBefore = game.moves({ verbose: true });
-    const threatenedSquaresBefore = new Set();
-    
-    for (const move of opponentMovesBefore) {
-      if (move.captured) {
-        threatenedSquaresBefore.add(move.to);
-      }
-    }
+    const fromSquare = playedMove.slice(0, 2);
+    const wasUnderAttack = game.attackers(opponentColor, fromSquare).length > 0;
     
     const ourMove = game.move({ 
-      from: playedMove.slice(0, 2), 
+      from: fromSquare, 
       to: playedMove.slice(2, 4), 
       promotion: playedMove[4] 
     });
@@ -283,7 +224,6 @@ function isDefensiveMove(fen, playedMove) {
     
     const inCheck = game.inCheck();
     const ourMovesAfter = game.moves({ verbose: true });
-    
     let createdMajorThreat = inCheck;
     
     if (!createdMajorThreat) {
@@ -299,8 +239,6 @@ function isDefensiveMove(fen, playedMove) {
       }
     }
     
-    const wasUnderAttack = threatenedSquaresBefore.has(ourMove.from);
-    
     if (wasUnderAttack && createdMajorThreat) {
       return { 
         isDefensive: false, 
@@ -315,13 +253,12 @@ function isDefensiveMove(fen, playedMove) {
       };
     }
     
-    return { isDefensive: false, reason: "Not a defensive move" };
+    return { isDefensive: false, reason: "Not a primary defensive move" };
     
   } catch (e) {
     return { isDefensive: false, reason: `Error: ${e.message}` };
   }
 }
-
 
 
 
@@ -551,10 +488,9 @@ const currentWin = isWhiteMove ? userwinpercents[i] : 100 - userwinpercents[i];
       const onlyMove = isOnlyLegalMove(fenBefore);
       const winPercentCheck = meetsMinimumWinPercent(currentWin);
       const directForkResponse = isDirectForkResponse(fenBefore, playedMove);
-const creativeSacFromFork = isCreativeSacrificeFromFork(fenBefore, playedMove);
-const blockForFork = directForkResponse.isDirectForkResponse && !creativeSacFromFork.isCreative;
-          const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
-    const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
+      const blockForFork = directForkResponse.isDirectForkResponse;
+      const isSacrifice = sacrificeResult.isSacrifice && !defensiveResult.isDefensive;
+      const winDropOk = isWhiteMove ? lastWin - currentWin >= -1.5 : lastWin - currentWin>=-1.5;
     /*console.log(`Move ${i}:`, {
       playedMove,
       isSacrifice,
