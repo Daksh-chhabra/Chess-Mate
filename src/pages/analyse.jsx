@@ -168,7 +168,7 @@ const AnalyticsCore = ({ gameData }) => {
     }, [pvtrying, pvfen, pvindex]);
 
     function acplToAccuracy(acpl) {
-        const k = 0.004;
+        const k = 0.005;
         let acc = 100 * Math.exp(-k * acpl);
         return parseFloat(acc.toFixed(2));
     }
